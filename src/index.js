@@ -17,6 +17,9 @@ import Headers from './headers';
 import Request, { getNodeRequestOptions } from './request';
 import FetchError from './fetch-error';
 
+// import Task from 'data.task'
+import Task from 'fun-task'
+
 /**
  * Fetch function
  *
@@ -27,14 +30,14 @@ import FetchError from './fetch-error';
 export default function fetch(url, opts) {
 
 	// allow custom promise
-	if (!fetch.Promise) {
-		throw new Error('native promise missing, set fetch.Promise to your favorite alternative');
+	if (!fetch.Task) {
+		throw new Error('native promise missing, set fetch.Task to your favorite alternative');
 	}
 
-	Body.Promise = fetch.Promise;
+	Body.Task = fetch.Task;
 
 	// wrap http.request into fetch
-	return new fetch.Promise((resolve, reject) => {
+	return fetch.Task.create((resolve, reject) => {
 		// build request object
 		const request = new Request(url, opts);
 		const options = getNodeRequestOptions(request);
@@ -179,6 +182,13 @@ export default function fetch(url, opts) {
 		});
 
 		writeToStream(req, request);
+
+        return () => {
+            console.log('cancelled')
+            req.abort();
+            // TODO: Remove event listeners? This causes a socket hang up error
+            // req.removeAllListeners();
+        }
 	});
 
 };
@@ -192,7 +202,7 @@ export default function fetch(url, opts) {
 fetch.isRedirect = code => code === 301 || code === 302 || code === 303 || code === 307 || code === 308;
 
 // expose Promise
-fetch.Promise = global.Promise;
+fetch.Task = Task;
 export {
 	Headers,
 	Request,

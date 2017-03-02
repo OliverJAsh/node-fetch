@@ -58,7 +58,7 @@ Body.prototype = {
 	 * @return  Promise
 	 */
 	arrayBuffer() {
-		return consumeBody.call(this).then(buf => buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
+		return consumeBody.call(this).map(buf => buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
 	},
 
 	/**
@@ -68,7 +68,7 @@ Body.prototype = {
 	 */
 	blob() {
 		let ct = this.headers && this.headers.get('content-type') || '';
-		return consumeBody.call(this).then(buf => Object.assign(
+		return consumeBody.call(this).map(buf => Object.assign(
 			// Prevent copying
 			new Blob([], {
 				type: ct.toLowerCase()
@@ -85,7 +85,7 @@ Body.prototype = {
 	 * @return  Promise
 	 */
 	json() {
-		return consumeBody.call(this).then(buffer => JSON.parse(buffer.toString()));
+		return consumeBody.call(this).map(buffer => JSON.parse(buffer.toString()));
 	},
 
 	/**
@@ -94,7 +94,7 @@ Body.prototype = {
 	 * @return  Promise
 	 */
 	text() {
-		return consumeBody.call(this).then(buffer => buffer.toString());
+		return consumeBody.call(this).map(buffer => buffer.toString());
 	},
 
 	/**
@@ -113,7 +113,7 @@ Body.prototype = {
 	 * @return  Promise
 	 */
 	textConverted() {
-		return consumeBody.call(this).then(buffer => convertBody(buffer, this.headers));
+		return consumeBody.call(this).map(buffer => convertBody(buffer, this.headers));
 	},
 
 
@@ -136,34 +136,34 @@ Body.mixIn = function (proto) {
  */
 function consumeBody(body) {
 	if (this[DISTURBED]) {
-		return Body.Promise.reject(new Error(`body used already for: ${this.url}`));
+		return Body.Task.reject(new Error(`body used already for: ${this.url}`));
 	}
 
 	this[DISTURBED] = true;
 
 	// body is null
 	if (this.body === null) {
-		return Body.Promise.resolve(new Buffer(0));
+		return Body.Task.resolve(new Buffer(0));
 	}
 
 	// body is string
 	if (typeof this.body === 'string') {
-		return Body.Promise.resolve(new Buffer(this.body));
+		return Body.Task.resolve(new Buffer(this.body));
 	}
 
 	// body is blob
 	if (this.body instanceof Blob) {
-		return Body.Promise.resolve(this.body[BUFFER]);
+		return Body.Task.resolve(this.body[BUFFER]);
 	}
 
 	// body is buffer
 	if (Buffer.isBuffer(this.body)) {
-		return Body.Promise.resolve(this.body);
+		return Body.Task.resolve(this.body);
 	}
 
 	// istanbul ignore if: should never happen
 	if (!(this.body instanceof Stream)) {
-		return Body.Promise.resolve(new Buffer(0));
+		return Body.Task.resolve(new Buffer(0));
 	}
 
 	// body is stream
@@ -172,7 +172,7 @@ function consumeBody(body) {
 	let accumBytes = 0;
 	let abort = false;
 
-	return new Body.Promise((resolve, reject) => {
+	return Body.Task.create((resolve, reject) => {
 		let resTimeout;
 
 		// allow timeout on slow response body
@@ -211,6 +211,10 @@ function consumeBody(body) {
 			clearTimeout(resTimeout);
 			resolve(Buffer.concat(accum));
 		});
+
+        return () => {
+            this.body.removeAllListeners();
+        }
 	});
 }
 
@@ -395,4 +399,4 @@ export function writeToStream(dest, instance) {
 }
 
 // expose Promise
-Body.Promise = global.Promise;
+Body.Task = global.Task;

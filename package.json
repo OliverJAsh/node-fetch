@@ -55,6 +55,7 @@
     "whatwg-url": "^4.0.0"
   },
   "dependencies": {
-    "encoding": "^0.1.11"
+    "encoding": "^0.1.11",
+    "fun-task": "^1.5.2"
   }
 }
